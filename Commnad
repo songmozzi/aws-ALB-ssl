@@ -1,0 +1,10 @@
+## cert-manager can help certificate check
+
+## version export
+export CERTMGR_VERSION=1.9.1
+
+## install
+kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v${CERTMGR_VERSION}/cert-manager.yaml
+
+## check
+kubectl -n cert-manager get pods
