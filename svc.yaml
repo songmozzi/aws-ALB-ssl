@@ -1,0 +1,15 @@
+## ingress connect svc file
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: inque-web
+  labels:
+    tier: aws-fe
+spec:
+  ports:
+  - port: 8080
+    protocol: TCP
+  selector:
+    tier: aws-fe
+    
