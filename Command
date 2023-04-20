@@ -1,6 +1,6 @@
 ## cert-manager can help certificate check
 
-## version export
+## version export (version check necessary)
 export CERTMGR_VERSION=1.9.1
 
 ## install
@@ -8,3 +8,69 @@ kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/relea
 
 ## check
 kubectl -n cert-manager get pods
+
+## AWS loadbalancer controller
+### when ingress deploy in eks cluster, ALB will be create
+
+
+## install 
+mkdir environment
+cd ~/environment
+mkdir -p manifests/alb-ingress-controller && cd manifests/alb-ingress-controller
+
+## region can be changed >>> SEOUL: ap-northeast-2
+## need eksctl command (if not installed, have to install eksctl)
+eksctl utils associate-iam-oidc-provider \
+    --region ${AWS_REGION} \
+    --cluster eks-demo \
+    --approve
+    
+## iam policy
+## need aws command (if not installed, have to install awscli)
+curl -o iam-policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.4.4/docs/install/iam_policy.json
+aws iam create-policy \
+    --policy-name AWSLoadBalancerControllerIAMPolicy \
+    --policy-document file://iam-policy.json
+    
+
+## iam account
+eksctl create iamserviceaccount \
+    --cluster eks-demo \
+    --namespace kube-system \
+    --name aws-load-balancer-controller \
+    --attach-policy-arn arn:aws:iam::$ACCOUNT_ID:policy/AWSLoadBalancerControllerIAMPolicy \
+    --override-existing-serviceaccounts \
+    --approve
+
+## controller yaml file download
+wget https://github.com/kubernetes-sigs/aws-load-balancer-controller/releases/download/v2.4.4/v2_4_4_full.yaml
+
+## change file
+spec:
+    containers:
+    - args:
+        - --cluster-name=eks-demo           ## eks cluster name
+        - --ingress-class=alb
+        image: amazon/aws-alb-ingress-controller:v2.4.4
+
+
+## delete this part
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  labels:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/name: aws-load-balancer-controller
+  name: aws-load-balancer-controller
+  namespace: kube-system
+---
+
+## apply
+kubectl apply -f v2_4_4_full.yaml
+
+### check
+kubectl get deployment -n kube-system aws-load-balancer-controller
+kubectl get sa aws-load-balancer-controller -n kube-system -o yaml
+
+
